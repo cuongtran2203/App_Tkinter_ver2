@@ -57,7 +57,8 @@ class RetinaFace(nn.Module):
         if cfg['name'] == 'mobilenet0.25':
             backbone = MobileNetV1()
             if cfg['pretrain']:
-                checkpoint = torch.load("C:/Users/cuong/Desktop/APP_tkinter/core/weights/mobilenetV1X0.25_pretrain.tar", map_location=torch.device('cpu'))
+                path_model="./core/weights/mobilenetV1X0.25_pretrain.tar"
+                checkpoint = torch.load(path_model, map_location=torch.device('cpu'))
                 from collections import OrderedDict
                 new_state_dict = OrderedDict()
                 for k, v in checkpoint['state_dict'].items():
