@@ -107,7 +107,7 @@ def snapshot():
             messagebox.showinfo("Infor","Capture Image Successfully")
 
 def update_frame1():
-    global canvas1,canvas2,photo,count,canvas4,label_Time1
+    global canvas1,photo,count,label_Time1
     # Doc tu camera
     ret, frame = cam.read()
     count+=1
@@ -120,7 +120,7 @@ def update_frame1():
         if count%10==0:
             thread=Thread(target=face_rc,args=(frame,))
             thread.start()
-        frame1.after(15, update_frame1)
+        frame1.after(20, update_frame1)
     except :
         pass
 
@@ -182,14 +182,8 @@ if __name__=="__main__":
     # canvas1.pack(side=LEFT, fill="both", expand=1)
     canvas1.place(x=0, y=0)
 
-    # Recognition area top right corner
-    # canvas2=Canvas(frame1,width=300,height=240,bg="yellow")
-    # canvas2.pack(side=BOTTOM, anchor=SE, fill="x", expand=0)
-    # img1 = ImageTk.PhotoImage(Image.open('app.jpg').resize((320,240)))
-    # canvas2.create_image(0,0,image = img1, anchor=SE)
     
     canvas3=Canvas(frame1,width=384,height=200,bg="white")
-    # canvas3.pack(side=BOTTOM, anchor=SE, fill="x", expand=0)
     canvas3.place(x=1536,y=0)
 
     # Id area
@@ -218,10 +212,7 @@ if __name__=="__main__":
     button1=Button(canvas3, text="Add User",bg="white", fg="black",command=select_apply, width=30, font=('Helvetica 15 bold'))
     button1.place(x=20, y=150)
 
-    # Details on camera canvas1
-    # canvas4=Canvas(canvas1,width=250,height=50,bg="white")
-    # canvas4.place(x=0,y=0)
-    # text_id=canvas4.create_text(110,18,text="", fill="black", font=('Helvetica 18 bold'))
+  
 
 
 
