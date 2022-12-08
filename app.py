@@ -11,9 +11,13 @@ from arcface import ArcFace
 from tkinter import messagebox
 from save_db import put_data
 from threading import Thread
+from core.play_sound import *
+from multiprocessing import Process
+from config_name import NAME
 face_rec=ArcFace.ArcFace()
 #define model face_detect
 cfg = cfg_mnet
+sound=Sound()
 model_path="./core/weights/mobilenet0.25_Final.pth"
 # net and model
 net = RetinaFace(cfg=cfg, phase = 'test')
@@ -60,6 +64,7 @@ def show():
 def select_apply():
     notebook.select(1)
     update_frame2()
+    frame1.after_cancel(update_frame1)
 def select_back():
     notebook.select(0)
 def predict(faces):
@@ -80,10 +85,9 @@ def predict(faces):
             MIN=dis
             label=emb_labels[1]
             team=emb_labels[2]    
-    if MIN>0.7 :
-        print(MIN)
+    if MIN>0.65 :
         label="None"
-        team="None"
+        team="NA"
     return label,team
 
    
@@ -105,28 +109,44 @@ def snapshot():
             face_ = ImageTk.PhotoImage(Image.fromarray(faces))
             canvas2_2.create_image(0,0, image = face_, anchor=NW)
             messagebox.showinfo("Infor","Capture Image Successfully")
-
+def update_sound():
+    name=label_name.cget("text")
+    if name!="" or name!="None" or name!=" ":
+        if name in NAME.keys():
+            names=NAME[name]
+            thread=Thread(target=sound.sound,args=(names,))
+            thread.start()
+    else :
+        pass
+    frame1.after(2500,update_sound)
 def update_frame1():
-    global canvas1,photo,count,label_Time1
+    global canvas1,photo,count,label_name,label_Time1
     # Doc tu camera
     ret, frame = cam.read()
+    width=cam.get(3)
+    height=cam.get(4)
     count+=1
     Min=9
     try:
-        img=cv2.cvtColor(frame,cv2.COLOR_BGR2RGB)
+        img = cv2.resize(frame,(1920,1080))
+        img=cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
         photo = ImageTk.PhotoImage(image=Image.fromarray(img))
         # Show
         canvas1.create_image(0,0, image = photo, anchor=NW) 
         if count%10==0:
-            thread=Thread(target=face_rc,args=(frame,))
-            thread.start()
-        frame1.after(20, update_frame1)
+            thread1=Thread(target=face_rc,args=(frame,))
+            
+            thread1.start()
+        
+            
+
+        frame1.after(25, update_frame1)
     except :
-        pass
+        print("Error")
 
 
 def update_frame2():
-    global canvas1_2,canvas2_2,photo_2,canvas4_2
+    global canvas1_2,canvas2_2,photo_2
     # Doc tu camera
     ret, frame = cam.read()
     # Ressize
@@ -149,21 +169,25 @@ def face_rc(frame):
     if len(face_list)>0:
         for face in face_list:
             try:
-                print("Face :",face.shape)
                 if face.shape[0]>50 and face.shape[1]>50:
 
                     label,team=predict(face)
                     if label is not None  :
                         label_name.configure(text=label)
-                        put_data(label)
+                        if label !="None":
+                            put_data(label)
                         # cv2.imwrite("face.png",face)
                         now = datetime.now()
                         current_time = now.strftime("%H:%M:%S")
                         label_Team_name.configure(text=team)
                         # canvas4.itemconfig(text_id,text="ID :{}\nTime : {}".format(label,current_time))
                         label_Time1.configure(text=str(current_time))
+                    else :
+                        label_name.configure(text="")
+                        label_Team_name.configure(text="")
             except :
                 pass
+
     # else :
     #     canvas4.itemconfig(text_id,text="ID: None")
 if __name__=="__main__":
@@ -172,7 +196,7 @@ if __name__=="__main__":
     root = Tk()
     root.geometry("1920x1080")
     root.title("Face Recogniton System")
-    # root.attributes('-fullscreen',True)
+    root.attributes('-fullscreen',True)
     notebook=ttk.Notebook(root)
     notebook.place(x=0,y=0)
     frame1=Frame(notebook,width=1920,height=1080,bg="white")
@@ -182,8 +206,14 @@ if __name__=="__main__":
     # canvas1.pack(side=LEFT, fill="both", expand=1)
     canvas1.place(x=0, y=0)
 
+    # Recognition area top right corner
+    # canvas2=Canvas(frame1,width=300,height=240,bg="yellow")
+    # canvas2.pack(side=BOTTOM, anchor=SE, fill="x", expand=0)
+    # img1 = ImageTk.PhotoImage(Image.open('app.jpg').resize((320,240)))
+    # canvas2.create_image(0,0,image = img1, anchor=SE)
     
     canvas3=Canvas(frame1,width=384,height=200,bg="white")
+    # canvas3.pack(side=BOTTOM, anchor=SE, fill="x", expand=0)
     canvas3.place(x=1536,y=0)
 
     # Id area
@@ -212,7 +242,10 @@ if __name__=="__main__":
     button1=Button(canvas3, text="Add User",bg="white", fg="black",command=select_apply, width=30, font=('Helvetica 15 bold'))
     button1.place(x=20, y=150)
 
-  
+    # Details on camera canvas1
+    # canvas4=Canvas(canvas1,width=250,height=50,bg="white")
+    # canvas4.place(x=0,y=0)
+    # text_id=canvas4.create_text(110,18,text="", fill="black", font=('Helvetica 18 bold'))
 
 
 
@@ -263,6 +296,7 @@ if __name__=="__main__":
    
    
     update_frame1()
+    update_sound()
     # update_frame2()
     root.mainloop()
         
