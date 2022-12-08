@@ -13,22 +13,14 @@ from save_db import put_data
 from threading import Thread
 from core.play_sound import *
 from multiprocessing import Process
+from coreAI.core_app import face_detection
 from config_name import NAME
+from coreAI.create_db import create_user
 face_rec=ArcFace.ArcFace()
 #define model face_detect
-cfg = cfg_mnet
 sound=Sound()
-model_path="./core/weights/mobilenet0.25_Final.pth"
-# net and model
-net = RetinaFace(cfg=cfg, phase = 'test')
-net = load_model(net, model_path, True)
-net.eval()
-print('Finished loading model!')
-device ="cpu"
-net = net.to(device)
-cam=cv2.VideoCapture('rtsp://admin:XEJVQU@192.168.1.3:554')
 def get_emb(img):
-    img_pro,faces_list=process_images(net,cfg,img)
+    img_pro,faces_list=face_detection(img)
     emb_list=[]
     for face in faces_list:
         emb=face_rec.calc_emb(face)
@@ -38,7 +30,7 @@ def calc_distance(faces,emb1):
     emb = face_rec.calc_emb(faces)    
     dis=face_rec.get_distance_embeddings(emb, emb1)
     return dis
-
+cam=cv2.VideoCapture('rtsp://admin:XEJVQU@192.168.1.3:554')
 def save_db():
     label=label_name_1.get()
     team=label_Team_name_1.get()
@@ -47,9 +39,8 @@ def save_db():
     else:
         try :
             img=cv2.imread("face.jpg")
-            emb=get_emb(img)
-            with open("DB/"+label+"."+team+".npy","wb") as f :
-                np.save(f,emb)
+            ID=label+"."+team
+            create_user(img,ID)
             messagebox.showinfo("Infor","Added to database")  
         except :
             print("watiiing")
@@ -67,33 +58,9 @@ def select_apply():
     frame1.after_cancel(update_frame1)
 def select_back():
     notebook.select(0)
-def predict(faces):
-    MIN=9
-    label=''
-    team=''
-    emb_vector=[]
-    list_face=os.listdir("DB")
-    for file in list_face:
-        file_path=os.path.join("DB",file)
-        with open(file_path,"rb") as f:
-            emb_list=np.load(f)
-        for emb in emb_list:
-            emb_vector.append([emb,file.split(".")[0],file.split(".")[1]])
-    for emb_labels in emb_vector:
-        dis=calc_distance(faces,emb_labels[0])
-        if dis<MIN:
-            MIN=dis
-            label=emb_labels[1]
-            team=emb_labels[2]    
-    if MIN>0.65 :
-        label="None"
-        team="NA"
-    return label,team
 
    
-faces_=None
 def snapshot():
-    global faces_
     # Get a frame from the video source
     ret, frame = cam.read()
     label = label_name_1.get()
@@ -102,7 +69,7 @@ def snapshot():
         messagebox.showwarning("Infor","Please enter a team name or ID user")
     else :
         if ret:
-            img,face_list=process_images(net,cfg,frame)
+            img,face_list=face_detection(frame)
             cv2.imwrite("face.jpg",img)
             faces=cv2.resize(face_list[0],(320,240))
             faces=cv2.cvtColor(faces,cv2.COLOR_BGR2RGB)
@@ -123,8 +90,6 @@ def update_frame1():
     global canvas1,photo,count,label_name,label_Time1
     # Doc tu camera
     ret, frame = cam.read()
-    width=cam.get(3)
-    height=cam.get(4)
     count+=1
     Min=9
     try:
@@ -162,10 +127,31 @@ def update_frame2():
     # frame1.after_cancel(update_frame1)
 
 
-
+def predict(faces):
+    MIN=9
+    label=''
+    team=''
+    emb_vector=[]
+    list_face=os.listdir("DB")
+    for file in list_face:
+        file_path=os.path.join("DB",file)
+        with open(file_path,"rb") as f:
+            emb_list=np.load(f)
+        for emb in emb_list:
+            emb_vector.append([emb,file.split(".")[0],file.split(".")[1]])
+    for emb_labels in emb_vector:
+        dis=calc_distance(faces,emb_labels[0])
+        if dis<MIN:
+            MIN=dis
+            label=emb_labels[1]
+            team=emb_labels[2]    
+    if MIN>0.65 :
+        label="None"
+        team="NA"
+    return label,team
 def face_rc(frame):
     frame = cv2.resize(frame,(640,480))
-    img,face_list=process_images(net,cfg,frame)
+    img,face_list=face_detection(frame)
     if len(face_list)>0:
         for face in face_list:
             try:
@@ -206,11 +192,7 @@ if __name__=="__main__":
     # canvas1.pack(side=LEFT, fill="both", expand=1)
     canvas1.place(x=0, y=0)
 
-    # Recognition area top right corner
-    # canvas2=Canvas(frame1,width=300,height=240,bg="yellow")
-    # canvas2.pack(side=BOTTOM, anchor=SE, fill="x", expand=0)
-    # img1 = ImageTk.PhotoImage(Image.open('app.jpg').resize((320,240)))
-    # canvas2.create_image(0,0,image = img1, anchor=SE)
+    
     
     canvas3=Canvas(frame1,width=384,height=200,bg="white")
     # canvas3.pack(side=BOTTOM, anchor=SE, fill="x", expand=0)
@@ -242,11 +224,7 @@ if __name__=="__main__":
     button1=Button(canvas3, text="Add User",bg="white", fg="black",command=select_apply, width=30, font=('Helvetica 15 bold'))
     button1.place(x=20, y=150)
 
-    # Details on camera canvas1
-    # canvas4=Canvas(canvas1,width=250,height=50,bg="white")
-    # canvas4.place(x=0,y=0)
-    # text_id=canvas4.create_text(110,18,text="", fill="black", font=('Helvetica 18 bold'))
-
+   
 
 
     ####TAB2
@@ -286,9 +264,7 @@ if __name__=="__main__":
     notebook.add(frame1,text="Recognition")
     notebook.add(frame2,text="Manager")
     count=0
-    # button = tk.Button(frame1, text="Apply User", bg='White', fg='Black',
-    #                             command=select_apply)
-    # button.place(x=850,y=495)
+
 
     
 
